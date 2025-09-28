@@ -1,0 +1,7 @@
+DATABASE_USER= DB username
+DATABASE_PASS= DB password
+ORDER_DB_URL=jdbc:mysql://mysql:3306/{order_schema_name}
+PRODUCT_DB_URL=jdbc:mysql://mysql:3306/{product_schema_name}
+CART_DB_URL=jdbc:mysql://mysql:3306/{cart_schema_name}
+AUTH_DB_URL=jdbc:mysql://mysql:3306/{auth_schema_name}
+JWT = key

@@ -1,0 +1,122 @@
+services:
+  mysql:
+    image: mysql:8
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_USER: ${DATABASE_USER}
+      MYSQL_PASSWORD: ${DATABASE_PASS}
+    healthcheck:
+      test: [ "CMD", "mysqladmin" ,"ping", "-h", "localhost" ]
+      interval: 10s
+      retries: 5
+    volumes:
+        - ./mysql-init:/docker-entrypoint-initdb.d
+        - mysql-data:/var/lib/mysql
+    networks:
+      - ecom-network
+    ports:
+      - "3308:3306"
+
+  product-service:
+    image: ecom/micro-product_service:latest
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://registry-service:8761/eureka
+      SPRING_DATASOURCE_URL: ${PRODUCT_DB_URL}
+      SPRING_DATASOURCE_USERNAME: ${DATABASE_USER}
+      SPRING_DATASOURCE_PASSWORD: ${DATABASE_PASS}
+      SPRING_DATASOURCE_HIKARI_INITIALIZATION_FAIL_TIMEOUT: 30000
+
+    ports:
+      - "8000:8000"
+    networks:
+      - ecom-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+      registry-service:
+        condition: service_started
+
+  order-service:
+    image: ecom/micro-order-service:latest
+    ports:
+      - "8002:8002"
+    networks:
+      - ecom-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+      registry-service:
+        condition: service_started
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://registry-service:8761/eureka
+      SPRING_DATASOURCE_URL: ${ORDER_DB_URL}
+      SPRING_DATASOURCE_USERNAME: ${DATABASE_USER}
+      SPRING_DATASOURCE_PASSWORD: ${DATABASE_PASS}
+      SPRING_DATASOURCE_HIKARI_INITIALIZATION_FAIL_TIMEOUT: 30000
+
+  api-gateway:
+    image: ecom/micro-gateway:latest
+    ports:
+      - "8765:8765"
+    networks:
+      - ecom-network
+    depends_on:
+      registry-service:
+        condition: service_started
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://registry-service:8761/eureka
+      JWT_KEY: ${JWT}
+
+  cart-service:
+    image: ecom/micro-cart_service:latest
+    ports:
+      - "8080:8080"
+    networks:
+      - ecom-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+      registry-service:
+        condition: service_started
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://registry-service:8761/eureka
+      SPRING_DATASOURCE_URL: ${CART_DB_URL}
+      SPRING_DATASOURCE_USERNAME: ${DATABASE_USER}
+      SPRING_DATASOURCE_PASSWORD: ${DATABASE_PASS}
+      SPRING_DATASOURCE_HIKARI_INITIALIZATION_FAIL_TIMEOUT: 30000
+
+  auth-service:
+    image: ecom/micro-auth:latest
+    ports:
+      - "8001:8001"
+    networks:
+      - ecom-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+      registry-service:
+        condition: service_started
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://registry-service:8761/eureka
+      SPRING_DATASOURCE_URL: ${AUTH_DB_URL}
+      SPRING_DATASOURCE_USERNAME: ${DATABASE_USER}
+      SPRING_DATASOURCE_PASSWORD: ${DATABASE_PASS}
+      SPRING_DATASOURCE_HIKARI_INITIALIZATION_FAIL_TIMEOUT: 30000
+      JWT_KEY: ${JWT}
+
+  registry-service:
+    image: ecom/micro-phonebook:latest
+    networks:
+      - ecom-network
+    ports:
+      - "8761:8761"
+    environment:
+      EUREKA_CLIENT_REGISTER_WITH_EUREKA: false
+      EUREKA_CLIENT_FETCH_REGISTRY: false
+
+
+volumes:
+  mysql-data:
+
+networks:
+  ecom-network:
