@@ -7,6 +7,8 @@ import com.example.cart_service.service.CartItemService;
 import com.example.cart_service.service.CartService;
 import com.example.cart_service.util.ProductServiceProxy;
 import feign.FeignException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -24,6 +26,8 @@ public class CartController {
 
     private final ProductServiceProxy proxy;
 
+    private final Logger logger = LoggerFactory.getLogger(CartController.class);
+
     public CartController(CartService cartService, CartItemService cartItemService, ProductServiceProxy proxy) {
         this.cartService = cartService;
         this.cartItemService = cartItemService;
@@ -31,7 +35,7 @@ public class CartController {
     }
 
 
-    @GetMapping()
+    @GetMapping
     public ResponseEntity<Cart> findCartForUser(@RequestHeader("X-ID") int userId) {
         Cart cart = cartService.findByUserId(userId);
         return ResponseEntity.ok(cart);
@@ -44,6 +48,7 @@ public class CartController {
             ProductResponse product = proxy.findProductById(productId);
             proxy.lowerProductStock(product.name());
             cartItemService.createCartItem(product, cart);
+            logger.info("Added product with id: {} to cart for user: {}", productId, userId);
             return ResponseEntity.ok().build();
         } catch (FeignException e) {
             return ResponseEntity.notFound().build();
@@ -62,13 +67,14 @@ public class CartController {
 
     @DeleteMapping("/clear-cart")
     public ResponseEntity<Void> clearCart(@RequestHeader("X-ID") int userId) {
+        logger.info("Clearing cart for user: {}", userId);
         cartService.clearCart(userId);
         return ResponseEntity.ok().build();
     }
 
     @GetMapping("/cart-items")
     public ResponseEntity<List<CartItem>> getCartItems(@RequestHeader("X-ID") int userId) {
-        System.out.println("REQUEST FROM ORDER SERVICE ID: " + userId);
+        logger.info("Loading user's cart with id: {}", userId);
         Cart cart = cartService.findByUserId(userId);
         return ResponseEntity.ok(cart.getCartItems());
     }

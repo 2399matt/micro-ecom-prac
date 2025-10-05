@@ -63,6 +63,7 @@ public class OrderController {
                 throw new EmptyCartException("Cart cannot be empty!");
             }
             Order order = orderService.save(userId, cartItems, request);
+            // TODO message/event to trigger payment (stripe) call... listen for success, send notification
             proxy.clearCart(userId);
             URI location = URI.create(externalUrl + "/order/" + order.getId());
             return ResponseEntity.created(location).build();
